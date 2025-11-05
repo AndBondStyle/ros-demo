@@ -1,0 +1,7 @@
+launch:
+  - include:
+      file: $(find-pkg-share main)/launch/bringup_launch.py
+  - include:
+      file: $(find-pkg-share foxglove_bridge)/launch/foxglove_bridge_launch.xml
+      arg:
+      - { name: "use_sim_time", value: "true" }
