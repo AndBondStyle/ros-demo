@@ -1,4 +1,5 @@
-FROM ros:jazzy-ros-base
+# https://hub.docker.com/layers/library/ros/jazzy-ros-base
+FROM ros@sha256:c5705f613a6427d07be6f3d0aba40068e16c3dea05604e1c95c63eac79fea658
 
 ENV ROS_VERSION=2
 ENV ROS_DISTRO=jazzy
@@ -55,6 +56,32 @@ RUN apt update && \
     ros-$ROS_DISTRO-nav2-loopback-sim \
     ros-$ROS_DISTRO-nav2-map-server \
     && rm -rf /var/lib/apt/lists/*
+
+# Install slam toolbox with patch
+WORKDIR /tmp/slam-toolbox-build
+ADD docker/slam-toolbox.patch .
+RUN . $ROS_ROOT/setup.sh \
+    && mkdir src \
+    && echo "\
+    - git:\n\
+        local-name: slam_toolbox\n\
+        uri: https://github.com/SteveMacenski/slam_toolbox-release.git\n\
+        version: release/jazzy/slam_toolbox/2.8.3-1\n\
+    " | vcs import src \
+    && (cd src/slam_toolbox && git apply ../../slam-toolbox.patch) \
+    && rosdep update \
+    && apt update \
+    && rosdep install --from-paths src --ignore-src -y \
+    && colcon build --merge-install --install-base /opt/ros/$ROS_DISTRO \
+    --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
+    && rm -rf /tmp/* \
+    && rm -rf /var/lib/apt/lists/*
+
+# Patch nav2 loopback simulator
+WORKDIR /tmp/nav2-loopback-sim-patch
+ADD docker/nav2-loopback-sim.patch .
+RUN patch -p1 -i nav2-loopback-sim.patch \
+    $(find /opt/ros/$ROS_DISTRO -name loopback_simulator.py)
 
 # Setup .bashrc
 RUN echo '\

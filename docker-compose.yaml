@@ -1,6 +1,6 @@
 services:
   ros:
-    image: registry.robotics-lab.ru/ros-demo:v1
+    image: registry.robotics-lab.ru/ros-demo:v2
     container_name: ros
     ports: [8765:8765]
     volumes: [".:/src"]

@@ -22,11 +22,13 @@ def generate_launch_description():
     # Get the launch directory
     bringup_dir = get_package_share_directory('main')
     launch_dir = os.path.join(bringup_dir, 'launch')
+    slam_package_dir = get_package_share_directory('slam_toolbox')
+    slam_launch_path = os.path.join(slam_package_dir, 'launch', 'online_sync_launch.py')
 
     # Create the launch configuration variables
     namespace = LaunchConfiguration('namespace')
     use_namespace = LaunchConfiguration('use_namespace')
-    slam = LaunchConfiguration('slam')
+    use_slam = LaunchConfiguration('use_slam')
     map_yaml_file = LaunchConfiguration('map')
     use_sim_time = LaunchConfiguration('use_sim_time')
     params_file = LaunchConfiguration('params_file')
@@ -34,7 +36,6 @@ def generate_launch_description():
     use_composition = LaunchConfiguration('use_composition')
     use_respawn = LaunchConfiguration('use_respawn')
     log_level = LaunchConfiguration('log_level')
-    use_localization = LaunchConfiguration('use_localization')
 
     # Map fully qualified names to relative ones so the node's namespace can be prepended.
     # In case of the transforms (tf), currently, there doesn't seem to be a better alternative
@@ -78,19 +79,14 @@ def generate_launch_description():
         description='Whether to apply a namespace to the navigation stack',
     )
 
-    declare_slam_cmd = DeclareLaunchArgument(
-        'slam', default_value='False', description='Whether run a SLAM'
+    declare_use_slam_cmd = DeclareLaunchArgument(
+        'use_slam', default_value='False', description='Whether run a SLAM'
     )
 
     declare_map_yaml_cmd = DeclareLaunchArgument(
         'map',
         default_value=os.path.join(bringup_dir, "maps", "tb3_sandbox.yaml"),
         description='Full path to map yaml file to load'
-    )
-
-    declare_use_localization_cmd = DeclareLaunchArgument(
-        'use_localization', default_value='True',
-        description='Whether to enable localization or not'
     )
 
     declare_use_sim_time_cmd = DeclareLaunchArgument(
@@ -141,35 +137,6 @@ def generate_launch_description():
                 remappings=remappings,
                 output='screen',
             ),
-            # IncludeLaunchDescription(
-            #     PythonLaunchDescriptionSource(
-            #         os.path.join(launch_dir, 'slam_launch.py')
-            #     ),
-            #     condition=IfCondition(PythonExpression([slam, ' and ', use_localization])),
-            #     launch_arguments={
-            #         'namespace': namespace,
-            #         'use_sim_time': use_sim_time,
-            #         'autostart': autostart,
-            #         'use_respawn': use_respawn,
-            #         'params_file': params_file,
-            #     }.items(),
-            # ),
-            # IncludeLaunchDescription(
-            #     PythonLaunchDescriptionSource(
-            #         os.path.join(launch_dir, 'localization_launch.py')
-            #     ),
-            #     condition=IfCondition(PythonExpression(['not ', slam, ' and ', use_localization])),
-            #     launch_arguments={
-            #         'namespace': namespace,
-            #         'map': map_yaml_file,
-            #         'use_sim_time': use_sim_time,
-            #         'autostart': autostart,
-            #         'params_file': params_file,
-            #         'use_composition': use_composition,
-            #         'use_respawn': use_respawn,
-            #         'container_name': 'nav2_container',
-            #     }.items(),
-            # ),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
                     os.path.join(launch_dir, 'navigation_launch.py')
@@ -189,16 +156,19 @@ def generate_launch_description():
 
     loopback_sim_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(launch_dir, 'loopback_sim_launch.py')),
+            os.path.join(launch_dir, 'loopback_sim_launch.py')
+        ),
         launch_arguments={
             'params_file': params_file,
+            'use_slam': use_slam,
         }.items(),
     )
 
     start_map_server = GroupAction(
         actions=[
-            SetParameter('use_sim_time', True),
+            SetParameter('use_sim_time', use_sim_time),
             Node(
+                condition=IfCondition(PythonExpression(['not ', use_slam])),
                 package='nav2_map_server',
                 executable='map_server',
                 name='map_server',
@@ -207,6 +177,25 @@ def generate_launch_description():
                 respawn_delay=2.0,
                 parameters=[configured_params, {'yaml_filename': map_yaml_file}],
                 remappings=remappings,
+            ),
+            Node(
+                condition=IfCondition(use_slam),
+                package='nav2_map_server',
+                executable='map_server',
+                name='map_server',
+                output='screen',
+                respawn=use_respawn,
+                respawn_delay=2.0,
+                parameters=[configured_params, {'yaml_filename': map_yaml_file}],
+                remappings=remappings + [('map', '/map/sim')],
+            ),
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(slam_launch_path),
+                condition=IfCondition(use_slam),
+                launch_arguments={
+                    'use_sim_time': use_sim_time,
+                    'slam_params_file': params_file,
+                }.items(),
             ),
             Node(
                 package='nav2_lifecycle_manager',
@@ -229,7 +218,7 @@ def generate_launch_description():
     # Declare the launch options
     ld.add_action(declare_namespace_cmd)
     ld.add_action(declare_use_namespace_cmd)
-    ld.add_action(declare_slam_cmd)
+    ld.add_action(declare_use_slam_cmd)
     ld.add_action(declare_map_yaml_cmd)
     ld.add_action(declare_use_sim_time_cmd)
     ld.add_action(declare_params_file_cmd)
@@ -237,7 +226,6 @@ def generate_launch_description():
     ld.add_action(declare_use_composition_cmd)
     ld.add_action(declare_use_respawn_cmd)
     ld.add_action(declare_log_level_cmd)
-    ld.add_action(declare_use_localization_cmd)
 
     # Add the actions to launch all of the navigation nodes
     ld.add_action(start_map_server)
