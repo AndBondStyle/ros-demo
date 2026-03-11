@@ -1,27 +1,44 @@
-# https://hub.docker.com/layers/library/ros/jazzy-ros-base
-FROM ros@sha256:c5705f613a6427d07be6f3d0aba40068e16c3dea05604e1c95c63eac79fea658
+FROM osrf/ros:jazzy-desktop-full
 
-ENV ROS_VERSION=2
-ENV ROS_DISTRO=jazzy
-ENV ROS_ROOT=/opt/ros/$ROS_DISTRO
-ENV RCUTILS_LOGGING_BUFFERED_STREAM=1
-ENV RCUTILS_COLORIZED_OUTPUT=1
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV CMAKE_BUILD_TYPE=Release
-ENV DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND=noninteractive \
+    ROS_DISTRO=jazzy \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
 
-# --no-install-recommends
-RUN echo '\
-APT::Install-Recommends "0";\n\
-APT::Install-Suggests "0";\n\
-' > /etc/apt/apt.conf.d/01norecommend
-
-# Install cyclonedds RMW
-ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-RUN apt update && \
-    apt install -y ros-$ROS_DISTRO-rmw-cyclonedds-cpp && \
-    rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    git \
+    vim \
+    nano \
+    sudo \
+    python3-pip \
+    python3-colcon-common-extensions \
+    python3-rosdep \
+    python3-numpy \
+    python3-matplotlib \
+    python3-opencv \
+    # VNC и Desktop окружение
+    tigervnc-standalone-server \
+    tigervnc-common \
+    novnc \
+    websockify \
+    xfce4 \
+    xfce4-terminal \
+    xfce4-clipman-plugin \
+    dbus-x11 \
+    autocutsel \
+    xfonts-base \
+    xfonts-100dpi \
+    xfonts-75dpi \
+    xfonts-cyrillic \
+    # ROS 2 инструменты
+    ros-${ROS_DISTRO}-rqt* \
+    ros-${ROS_DISTRO}-rviz2 \
+    ros-${ROS_DISTRO}-teleop-twist-keyboard \
+    ros-${ROS_DISTRO}-tf2-tools \
+    ros-${ROS_DISTRO}-foxglove-bridge \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install foxglove bridge v0.8.5
 RUN . $ROS_ROOT/setup.sh \
@@ -42,56 +59,62 @@ RUN . $ROS_ROOT/setup.sh \
     && rm -rf /tmp/* \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Nav2 dependencies
-RUN apt update && \
-    apt install -y \
-    ros-$ROS_DISTRO-nav2-core \
-    ros-$ROS_DISTRO-nav2-controller \
-    ros-$ROS_DISTRO-nav2-bt-navigator \
-    ros-$ROS_DISTRO-nav2-lifecycle-manager \
-    ros-$ROS_DISTRO-nav2-behaviors \
-    ros-$ROS_DISTRO-nav2-planner \
-    ros-$ROS_DISTRO-nav2-navfn-planner \
-    ros-$ROS_DISTRO-nav2-regulated-pure-pursuit-controller \
-    ros-$ROS_DISTRO-nav2-loopback-sim \
-    ros-$ROS_DISTRO-nav2-map-server \
-    && rm -rf /var/lib/apt/lists/*
+# Создание пользователя
+ARG USERNAME=student
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
 
-# Install slam toolbox with patch
-WORKDIR /tmp/slam-toolbox-build
-ADD docker/slam-toolbox.patch .
-RUN . $ROS_ROOT/setup.sh \
-    && mkdir src \
-    && echo "\
-    - git:\n\
-        local-name: slam_toolbox\n\
-        uri: https://github.com/SteveMacenski/slam_toolbox-release.git\n\
-        version: release/jazzy/slam_toolbox/2.8.3-1\n\
-    " | vcs import src \
-    && (cd src/slam_toolbox && git apply ../../slam-toolbox.patch) \
-    && rosdep update \
-    && apt update \
-    && rosdep install --from-paths src --ignore-src -y \
-    && colcon build --merge-install --install-base /opt/ros/$ROS_DISTRO \
-    --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
-    && rm -rf /tmp/* \
-    && rm -rf /var/lib/apt/lists/*
+RUN (groupadd --gid $USER_GID $USERNAME 2>/dev/null || groupmod -n $USERNAME $(getent group $USER_GID | cut -d: -f1)) \
+    && (useradd --uid $USER_UID --gid $USER_GID -m $USERNAME 2>/dev/null || usermod -l $USERNAME -d /home/$USERNAME -m $(getent passwd $USER_UID | cut -d: -f1)) \
+    && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
+    && chmod 0440 /etc/sudoers.d/$USERNAME
 
-# Patch nav2 loopback simulator
-WORKDIR /tmp/nav2-loopback-sim-patch
-ADD docker/nav2-loopback-sim.patch .
-RUN patch -p1 -i nav2-loopback-sim.patch \
-    $(find /opt/ros/$ROS_DISTRO -name loopback_simulator.py)
+USER $USERNAME
+WORKDIR /home/$USERNAME
 
-# Setup .bashrc
-RUN echo '\
-export LD_LIBRARY_PATH=$ROS_ROOT/lib/$(gcc -dumpmachine)\n\
-source $ROS_ROOT/setup.bash\n\
-LOCAL_SETUP="/src/install/setup.bash";\n\
-if [ -f "$LOCAL_SETUP" ]; then source $LOCAL_SETUP; fi\n\
-' >> /root/.bashrc
+# Создание workspace
+RUN mkdir -p ros2_ws/src
 
-# Entrypoint
-WORKDIR /src
-ENTRYPOINT ["/bin/bash", "-lc"]
-CMD ["trap : TERM INT; sleep infinity & wait"]
+# Настройка VNC
+RUN mkdir -p ~/.vnc && \
+    echo "student" | vncpasswd -f > ~/.vnc/passwd && \
+    chmod 600 ~/.vnc/passwd
+
+# Создание startup скрипта для VNC
+RUN echo '#!/bin/bash' > ~/.vnc/xstartup && \
+    echo 'export XKL_XMODMAP_DISABLE=1' >> ~/.vnc/xstartup && \
+    echo 'unset SESSION_MANAGER' >> ~/.vnc/xstartup && \
+    echo 'unset DBUS_SESSION_BUS_ADDRESS' >> ~/.vnc/xstartup && \
+    echo '# Clipboard sync' >> ~/.vnc/xstartup && \
+    echo 'autocutsel -fork' >> ~/.vnc/xstartup && \
+    echo 'autocutsel -selection PRIMARY -fork' >> ~/.vnc/xstartup && \
+    echo 'exec startxfce4' >> ~/.vnc/xstartup && \
+    chmod +x ~/.vnc/xstartup
+
+# Настройка окружения ROS
+RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> ~/.bashrc \
+    && echo "alias cb='cd ~/ros2_ws && colcon build'" >> ~/.bashrc \
+    && echo "alias cs='source ~/ros2_ws/install/setup.bash'" >> ~/.bashrc \
+    && echo "alias ws='cd ~/ros2_ws'" >> ~/.bashrc
+
+# Создание startup скрипта для пользователя student
+RUN echo '#!/bin/bash' > /home/$USERNAME/start-vnc.sh && \
+    echo 'set -e' >> /home/$USERNAME/start-vnc.sh && \
+    echo 'echo "Starting VNC server..."' >> /home/$USERNAME/start-vnc.sh && \
+    echo 'vncserver :1 -geometry 1920x1080 -depth 24 -localhost no' >> /home/$USERNAME/start-vnc.sh && \
+    echo 'echo "VNC server started on :1 (port 5901)"' >> /home/$USERNAME/start-vnc.sh && \
+    echo 'echo "Starting noVNC web server..."' >> /home/$USERNAME/start-vnc.sh && \
+    echo 'echo "Access desktop at http://localhost:6080/vnc.html"' >> /home/$USERNAME/start-vnc.sh && \
+    echo 'exec websockify --web=/usr/share/novnc 6080 localhost:5901' >> /home/$USERNAME/start-vnc.sh && \
+    chown $USERNAME:$USERNAME /home/$USERNAME/start-vnc.sh && \
+    chmod +x /home/$USERNAME/start-vnc.sh
+
+# Инициализация rosdep
+RUN rosdep update
+
+USER $USERNAME
+WORKDIR /home/$USERNAME/ros2_ws
+
+EXPOSE 5901 6080
+
+CMD ["/bin/bash", "-c", "/home/student/start-vnc.sh"]
