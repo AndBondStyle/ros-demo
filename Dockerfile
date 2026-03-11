@@ -1,4 +1,4 @@
-FROM osrf/ros:jazzy-desktop-full
+FROM rwthika/ros2:jazzy-desktop-full
 
 ENV DEBIAN_FRONTEND=noninteractive \
     ROS_DISTRO=jazzy \
@@ -47,7 +47,7 @@ RUN . $ROS_ROOT/setup.sh \
     && mkdir /tmp/foxglove-build \
     && cd /tmp/foxglove-build \
     && mkdir src \
-    && echo "\
+    && printf "\
     - git:\n\
         local-name: foxglove-sdk/foxglove_bridge\n\
         uri: https://github.com/ros2-gbp/foxglove_bridge-release.git\n\
