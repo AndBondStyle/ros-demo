@@ -12,11 +12,10 @@ def generate_launch_description():
     urdf_model_path = os.path.join(pkg_path, 'config', 'robot.urdf.xacro')
     controllers_yaml_path = os.path.join(pkg_path, 'config', 'controllers.yaml')
 
-    robot_description_config = xacro.process_file(
-        urdf_model_path, 
-        mappings={'CONTROLLER_PARAMS_FILE': controllers_yaml_path}
-    )
-    robot_description = {'robot_description': robot_description_config.toxml()}
+    robot_description_config = xacro.process_file(urdf_model_path)
+    urdf = robot_description_config.toxml()
+    urdf = urdf.replace("CONTROLLER_PARAMS_FILE", controllers_yaml_path)
+    robot_description = {'robot_description': urdf}
 
     sim_time_param = {'use_sim_time': True}
 

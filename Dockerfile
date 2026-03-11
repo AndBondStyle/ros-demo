@@ -5,7 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     git \
     vim \
@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y \
     # VNC и Desktop окружение
     tigervnc-standalone-server \
     tigervnc-common \
+    tigervnc-tools \
     novnc \
     websockify \
     xfce4 \
@@ -36,7 +37,6 @@ RUN apt-get update && apt-get install -y \
     ros-${ROS_DISTRO}-rviz2 \
     ros-${ROS_DISTRO}-teleop-twist-keyboard \
     ros-${ROS_DISTRO}-tf2-tools \
-    ros-${ROS_DISTRO}-foxglove-bridge \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
@@ -56,9 +56,18 @@ RUN . $ROS_ROOT/setup.sh \
     && rosdep update \
     && apt update \
     && rosdep install --from-paths src --ignore-src -y \
+    && cp $ROS_ROOT/setup.* $ROS_ROOT/local_setup.* . \
     && colcon build --merge-install --install-base /opt/ros/$ROS_DISTRO \
     --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
-    && rm -rf /tmp/* \
+    && cp setup.* local_setup.* $ROS_ROOT \
+    && rm -rf /tmp/foxglove-build \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-${ROS_DISTRO}-ros2-control \
+    ros-${ROS_DISTRO}-ros2-controllers \
+    ros-${ROS_DISTRO}-gz-ros2-control \
+    ros-${ROS_DISTRO}-gz-ros2-control-demos \
     && rm -rf /var/lib/apt/lists/*
 
 # Создание пользователя
@@ -115,7 +124,8 @@ RUN echo '#!/bin/bash' > /home/$USERNAME/start-vnc.sh && \
 RUN rosdep update
 
 USER $USERNAME
-WORKDIR /home/$USERNAME/ros2_ws
+WORKDIR /src
+ENV DISPLAY=":1"
 
 EXPOSE 5901 6080
 
