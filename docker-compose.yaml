@@ -1,6 +1,7 @@
 services:
   ros:
     image: ros-full:latest
+    build: .
     container_name: ros-full
     ports: [6080:6080, 8765:8765]
     volumes: [".:/src"]

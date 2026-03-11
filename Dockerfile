@@ -40,6 +40,8 @@ RUN apt-get update && apt-get install -y \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
+ENV ROS_ROOT=/opt/ros/${ROS_DISTRO}
+
 # Install foxglove bridge v0.8.5
 RUN . $ROS_ROOT/setup.sh \
     && mkdir /tmp/foxglove-build \
