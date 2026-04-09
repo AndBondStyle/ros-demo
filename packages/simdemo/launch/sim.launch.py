@@ -26,23 +26,30 @@ def generate_launch_description():
         parameters=[robot_description, sim_time_param]
     )
 
+    world_path = os.path.join(get_package_share_directory('simdemo'), 'config', 'world.sdf')
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(
             get_package_share_directory('ros_gz_sim'), 'launch', 'gz_sim.launch.py')]),
-        launch_arguments={'gz_args': '-r empty.sdf'}.items(),
+        # launch_arguments={'gz_args': '-r empty.sdf'}.items(),
+        launch_arguments={'gz_args': f'-r {world_path}'}.items(),
     )
 
     gz_spawn_entity = Node(
         package='ros_gz_sim',
         executable='create',
         output='screen',
-        arguments=['-topic', 'robot_description', '-name', 'diff_bot'],
+        arguments=['-topic', 'robot_description', '-name', 'diff_bot', '-z', '0.5'],
     )
 
     bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
-        arguments=['/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock'],
+        arguments=[
+            '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
+            '/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
+            '/imu@sensor_msgs/msg/Imu@gz.msgs.IMU',
+            '/sim/odom@nav_msgs/msg/Odometry[gz.msgs.Odometry',
+        ],
         output='screen'
     )
 
