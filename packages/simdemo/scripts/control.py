@@ -52,7 +52,6 @@ class DiffDriveController(Node):
         self.last_time = None
 
     def cmd_vel_callback(self, msg: Twist):
-        self.get_logger().info(f"{msg}")
         v = msg.linear.x  # m/s
         w = msg.angular.z  # rad/s
 
@@ -62,15 +61,14 @@ class DiffDriveController(Node):
         wheel_speeds.data = [left_speed, right_speed]
 
         self.publisher_.publish(wheel_speeds)
-        # self.get_logger().info(
-        #     f'FORWARD: v={v:.3f}, w={w:.3f} -> left={left_speed:.3f}, right={right_speed:.3f} rad/s'
-        # )
 
     def join_states_callback(self, msg: DynamicJointState):
         left_speed = msg.interface_values[0].values[1]
         right_speed = msg.interface_values[1].values[1]
-        left_speed = left_speed + np.random.normal(0.0, 0.1)
-        right_speed = right_speed + np.random.normal(0.0, 0.1)
+
+        # SIMULATED NORMAL NOISE
+        left_speed = left_speed + np.random.normal(0.0, 0.5)
+        right_speed = right_speed + np.random.normal(0.0, 0.5)
 
         v = (left_speed + right_speed) * self.wheel_radius / 2
         w = (right_speed - left_speed) * self.wheel_radius / self.track_width
@@ -129,11 +127,7 @@ class DiffDriveController(Node):
         tf.transform.rotation.y = q[1]
         tf.transform.rotation.z = q[2]
         tf.transform.rotation.w = q[3]
-        self.tfb.sendTransform(tf)
-
-        # self.get_logger().info(
-        #     f'BACKWARD: left={left_speed:.3f}, right={right_speed:.3f} rad/s -> v={v:.3f}, w={w:.3f}'
-        # )
+        # self.tfb.sendTransform(tf)
 
 
 def main(args=None):
