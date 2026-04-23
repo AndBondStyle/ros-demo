@@ -15,7 +15,7 @@ launch:
     - { name: "world_frame", value: "ekf_odom" }
     - { name: "odom_frame", value: "ekf_odom" }
     - { name: "base_link_frame", value: "base_link" }
-    - { name: "publish_tf", value: False }
+    - { name: "publish_tf", value: True }
     - { name: "publish_acceleration", value: False }
     - { name: "predict_to_current_time", value: True }
     - { name: "dynamic_process_noise_covariance", value: True }
@@ -38,20 +38,20 @@ launch:
     - { name: "odom0_config", value: [
             False, False, False,   # pos
             False, False, False,   # rot
-            True, True, False,    # pos`
+            True, True, False,     # pos`
             False, False, True,    # rot`
             False, False, False,   # pos``
         ]
     }
 
-    - { name: "odom0", value: "/wheel/odom" }
-    - { name: "odom0_differential", value: False }
-    - { name: "odom0_queue_size", value: 30 }
-    - { name: "odom0_config", value: [
+    - { name: "odom1", value: "/wheel/odom" }
+    - { name: "odom1_differential", value: False }
+    - { name: "odom1_queue_size", value: 30 }
+    - { name: "odom1_config", value: [
             False, False, False,   # pos
             False, False, False,   # rot
             True, False, False,    # pos`
-            False, False, True,   # rot`
+            False, False, True,    # rot`
             False, False, False,   # pos``
         ]
     }

@@ -78,7 +78,7 @@ class OdomVizNode(Node):
         t.transform.rotation.y = msg.pose.pose.orientation.y
         t.transform.rotation.z = msg.pose.pose.orientation.z
         t.transform.rotation.w = msg.pose.pose.orientation.w
-        self.tf_broadcaster.sendTransform(t)
+        # self.tf_broadcaster.sendTransform(t)
 
     def compute_transform(self, msg: Odometry):
         t = TransformStamped()

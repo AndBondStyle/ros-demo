@@ -112,6 +112,9 @@ class DiffDriveController(Node):
 
         odom.twist.twist.linear.x = v
         odom.twist.twist.angular.z = w
+        odom.twist.covariance = [0.0] * 36
+        odom.twist.covariance[0] = 0.001
+        odom.twist.covariance[35] = 0.001
         self.odom_pub.publish(odom)
 
         tf = TransformStamped()

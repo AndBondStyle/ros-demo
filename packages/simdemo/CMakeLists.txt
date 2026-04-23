@@ -10,6 +10,6 @@ find_package(velocity_controllers REQUIRED)
 find_package(joint_state_broadcaster REQUIRED)
 
 install(DIRECTORY config launch DESTINATION share/${PROJECT_NAME})
-install(PROGRAMS scripts/control.py DESTINATION lib/${PROJECT_NAME})
+install(PROGRAMS scripts/control.py scripts/odomviz.py DESTINATION lib/${PROJECT_NAME})
 
 ament_package()
