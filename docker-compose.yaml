@@ -1,6 +1,7 @@
 services:
   ros:
-    image: registry.robotics-lab.ru/ros-demo:v2
+    image: registry.robotics-lab.ru/ros-demo:v2-vscode
+    build: .
     container_name: ros
-    ports: [8765:8765]
+    ports: [8765:8765, 8000:8000]
     volumes: [".:/src"]
