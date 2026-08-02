@@ -21,6 +21,22 @@ RUN mkdir -p /tmp/extensions && cd /tmp/extensions \
     && openvscode-server --install-extension ms-python.python \
     && openvscode-server --install-extension ms-python.black-formatter
 
+# Setup mediamtx
+# Mediamtx bre-built custom binary is downloaded from S3
+# Built from tag v1.18.1 with docker/mediamtx.patch applied
+# https://github.com/bluenviron/mediamtx/issues/5744
+RUN curl -sSL -o /bin/mediamtx https://storage.yandexcloud.net/the-lab-storage/rbm/mediamtx-1.18.1-${TARGETARCH}-patched \
+    && chmod +x /bin/mediamtx
+
+# OpenCV & GStreamer requirements
+RUN apt update && \
+    apt install -y \
+    python3-opencv \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-rtsp \
+    ros-$ROS_DISTRO-cv-bridge \
+    && rm -rf /var/lib/apt/lists/*
+
 # Entrypoint
 ADD docker/entrypoint.sh /root/entrypoint.sh
 WORKDIR /src
